@@ -62,3 +62,4 @@ cat urls.txt | xssrecon
 ```
 
 ## Output Examples
+<img width="792" height="820" alt="image" src="https://github.com/user-attachments/assets/3209c95f-cb7f-4f15-b85e-dd25c4b490a2" />
