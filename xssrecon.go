@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,11 +13,21 @@ import (
 	"strings"
 	"time"
 
-    "github.com/spf13/pflag"
-    "github.com/rix4uni/xssrecon/banner"
+	"github.com/spf13/pflag"
+	"github.com/rix4uni/xssrecon/banner"
 )
 
 var specialChars = []string{`'`, `"`, `<`, `>`, `(`, `)`, "`", `{`, `}`, `/`, `\`, `;`}
+
+type JSONOutput struct {
+	Processing string            `json:"processing"`
+	BaseURL    string            `json:"baseurl"`
+	Reflected  bool              `json:"reflected"`
+	Allowed    []string          `json:"allowed"`
+	Blocked    []string          `json:"blocked"`
+	Converted  []string          `json:"converted"`
+	Count      map[string]int    `json:"count"`
+}
 
 func fetch(url string, userAgent string, timeout int) (string, error) {
 	// Skip TLS certificate verification
@@ -24,8 +35,8 @@ func fetch(url string, userAgent string, timeout int) (string, error) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{
-	    Transport: tr,
-	    Timeout: time.Duration(timeout) * time.Second,
+		Transport: tr,
+		Timeout:   time.Duration(timeout) * time.Second,
 	}
 
 	// Create HTTP request with custom User-Agent
@@ -70,11 +81,13 @@ var conversions = map[string]string{
 	">":  "&gt;",
 }
 
-func processURL(inputURL string, userAgent string, timeout int, noColor bool, verbose bool, skipSpecialChar bool) {
-	if noColor {
-		fmt.Printf("\nPROCESSING: %s\n", inputURL)
-	} else {
-		fmt.Printf("\n\033[96mPROCESSING: %s\033[0m\n", inputURL)
+func processURL(inputURL string, userAgent string, timeout int, noColor bool, verbose bool, skipSpecialChar bool, jsonOutput bool) {
+	if !jsonOutput {
+		if noColor {
+			fmt.Printf("\nPROCESSING: %s\n", inputURL)
+		} else {
+			fmt.Printf("\n\033[96mPROCESSING: %s\033[0m\n", inputURL)
+		}
 	}
 
 	baseURLsRaw, err := runPvreplace(inputURL, "rix4uni")
@@ -91,10 +104,16 @@ func processURL(inputURL string, userAgent string, timeout int, noColor bool, ve
 			continue
 		}
 
-		if noColor {
-			fmt.Printf("BASEURL: %s\n", baseURL)
-		} else {
-			fmt.Printf("\033[94mBASEURL: %s\033[0m\n", baseURL)
+		var output JSONOutput
+		output.Processing = inputURL
+		output.BaseURL = baseURL
+
+		if !jsonOutput {
+			if noColor {
+				fmt.Printf("BASEURL: %s\n", baseURL)
+			} else {
+				fmt.Printf("\033[94mBASEURL: %s\033[0m\n", baseURL)
+			}
 		}
 
 		body, err := fetch(baseURL, userAgent, timeout)
@@ -104,14 +123,25 @@ func processURL(inputURL string, userAgent string, timeout int, noColor bool, ve
 		}
 
 		if strings.Contains(body, "rix4uni") {
-			if noColor {
-				fmt.Println("REFLECTED: YES")
-			} else {
-				fmt.Println("\033[92mREFLECTED: YES\033[0m")
+			output.Reflected = true
+			if !jsonOutput {
+				if noColor {
+					fmt.Println("REFLECTED: YES")
+				} else {
+					fmt.Println("\033[92mREFLECTED: YES\033[0m")
+				}
 			}
 
-			// If check-reflected-only is set, skip the rest
+			// If skipSpecialChar is set, skip the rest
 			if skipSpecialChar {
+				if jsonOutput {
+					output.Allowed = []string{}
+					output.Blocked = []string{}
+					output.Converted = []string{}
+					output.Count = map[string]int{"allowed": 0, "blocked": 0, "converted": 0}
+					jsonBytes, _ := json.MarshalIndent(output, "", "  ")
+					fmt.Println(string(jsonBytes))
+				}
 				continue
 			}
 
@@ -134,8 +164,8 @@ func processURL(inputURL string, userAgent string, timeout int, noColor bool, ve
 						continue
 					}
 
-					if verbose {
-						if noColor{
+					if verbose && !jsonOutput {
+						if noColor {
 							fmt.Printf("CHECKING: %s\n", testURL)
 						} else {
 							fmt.Printf("\033[95mCHECKING: %s\033[0m\n", testURL)
@@ -160,21 +190,44 @@ func processURL(inputURL string, userAgent string, timeout int, noColor bool, ve
 				}
 			}
 
-			if noColor {
-				fmt.Printf("ALLOWED: %v\n", allowed)
-				fmt.Printf("BLOCKED: %v\n", blocked)
-				fmt.Printf("CONVERTED: %v\n", converted)
+			if jsonOutput {
+				output.Allowed = allowed
+				output.Blocked = blocked
+				output.Converted = converted
+				output.Count = map[string]int{
+					"allowed":   len(allowed),
+					"blocked":   len(blocked),
+					"converted": len(converted),
+				}
+				jsonBytes, _ := json.MarshalIndent(output, "", "  ")
+				fmt.Println(string(jsonBytes))
 			} else {
-				fmt.Printf("\033[32mALLOWED: %v\033[0m\n", allowed)
-				fmt.Printf("\033[31mBLOCKED: %v\033[0m\n", blocked)
-				fmt.Printf("\033[33mCONVERTED: %v\033[0m\n", converted)
+				if noColor {
+					fmt.Printf("ALLOWED: %v\n", allowed)
+					fmt.Printf("BLOCKED: %v\n", blocked)
+					fmt.Printf("CONVERTED: %v\n", converted)
+				} else {
+					fmt.Printf("\033[32mALLOWED: %v\033[0m\n", allowed)
+					fmt.Printf("\033[31mBLOCKED: %v\033[0m\n", blocked)
+					fmt.Printf("\033[33mCONVERTED: %v\033[0m\n", converted)
+				}
 			}
 
 		} else {
-			if noColor {
-				fmt.Println("REFLECTED: NO")
+			output.Reflected = false
+			if jsonOutput {
+				output.Allowed = []string{}
+				output.Blocked = []string{}
+				output.Converted = []string{}
+				output.Count = map[string]int{"allowed": 0, "blocked": 0, "converted": 0}
+				jsonBytes, _ := json.MarshalIndent(output, "", "  ")
+				fmt.Println(string(jsonBytes))
 			} else {
-				fmt.Println("\033[91mREFLECTED: NO\033[0m")
+				if noColor {
+					fmt.Println("REFLECTED: NO")
+				} else {
+					fmt.Println("\033[91mREFLECTED: NO\033[0m")
+				}
 			}
 		}
 	}
@@ -183,11 +236,12 @@ func processURL(inputURL string, userAgent string, timeout int, noColor bool, ve
 func main() {
 	userAgent := pflag.StringP("user-agent", "H", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36", "Custom User-Agent header for HTTP requests.")
 	timeout := pflag.IntP("timeout", "t", 15, "Timeout for HTTP requests in seconds.")
-	skipSpecialChar := pflag.BoolP("skipspecialchar", "s", false, "Only check rix4uni in reponse and move to next url, skip special characters checking.")
+	skipSpecialChar := pflag.BoolP("skipspecialchar", "s", false, "Only check rix4uni in reponse and move to next url, skip checking special characters.")
 	noColor := pflag.Bool("no-color", false, "Do not use colored output.")
 	silent := pflag.Bool("silent", false, "silent mode.")
 	version := pflag.Bool("version", false, "Print the version of the tool and exit.")
 	verbose := pflag.Bool("verbose", false, "Enable verbose output for debugging purposes.")
+	jsonOutput := pflag.Bool("json", false, "Output results in JSON format.")
 	pflag.Parse()
 
 	if *version {
@@ -203,7 +257,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		inputURL := scanner.Text()
-		processURL(inputURL, *userAgent, *timeout, *noColor, *verbose, *skipSpecialChar)
+		processURL(inputURL, *userAgent, *timeout, *noColor, *verbose, *skipSpecialChar, *jsonOutput)
 	}
 
 	if err := scanner.Err(); err != nil {

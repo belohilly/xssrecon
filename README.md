@@ -40,6 +40,7 @@ cd xssrecon; go install
 ## Usage
 ```
 Usage of xssrecon:
+      --json                Output results in JSON format.
       --no-color            Do not use colored output.
       --silent              silent mode.
   -s, --skipspecialchar     Only check rix4uni in reponse and move to next url, skip checking special characters.
@@ -62,4 +63,19 @@ cat urls.txt | xssrecon
 ```
 
 ## Output Examples
+```
+Top XSS payloads is: 50
+urls.txt: 4
+
+Saved sending 100 requests:
+cat urls.txt | xssrecon --silent --skipspecialchar --json | jq -r 'select(.reflected==true) | .baseurl'
+https://labs.hackxpert.com/RXSS/GET/01.php?fname=rix4uni
+https://labs.hackxpert.com/RXSS/GET/00.php?fname=rix4uni
+http://testphp.vulnweb.com/artists.php?artist=rix4uni&id=2
+
+Saved sending 200 requests:
+cat urls.txt | xssrecon --silent --json | jq -r 'select(.reflected==true) | select(.count.allowed==12) | .baseurl'
+https://labs.hackxpert.com/RXSS/GET/01.php?fname=rix4uni
+```
+
 <img width="792" height="820" alt="image" src="https://github.com/user-attachments/assets/3209c95f-cb7f-4f15-b85e-dd25c4b490a2" />
